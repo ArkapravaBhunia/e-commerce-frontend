@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopHub - Admin Panel</title>
+    <style>
+        /* Shared Styles from Main Page for Consistency */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary-color: #2563eb; --primary-dark: #1e40af; --secondary-color: #64748b;
+            --accent-color: #f59e0b; --background: #ffffff; --card-bg: #f8fafc;
+            --text-primary: #0f172a; --text-secondary: #64748b; --border-color: #e2e8f0;
+            --success: #10b981; --error: #ef4444;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: var(--text-primary); background: var(--background); line-height: 1.6;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 40px; }
+        .header {
+            background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+        .logo {
+            font-size: 28px; font-weight: bold; background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            cursor: pointer; transition: transform 0.3s; text-decoration: none;
+        }
+        .nav-link { text-decoration: none; color: var(--text-primary); font-weight: 500; transition: all 0.3s; padding: 5px 0; }
+        .nav-link:hover { color: var(--primary-color); }
+        .nav-link.active { color: var(--primary-color); }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; text-decoration: none; display: inline-block; text-align: center; }
+        .btn-primary-solid { background: var(--primary-color); color: white; }
+        .btn-primary-solid:hover { background: var(--primary-dark); transform: translateY(-2px); }
+        .btn-danger { background: var(--error); color: white; }
+        .btn-danger:hover { background: #d32f2f; }
+        .btn-edit { background: var(--accent-color); color: white; }
+        .btn-edit:hover { background: #d97706; }
+        .btn-secondary { background: var(--secondary-color); color: white; }
+        .btn-secondary:hover { background: #475569; }
+
+        /* Admin Specific Styles */
+        .admin-section { padding: 40px 0; }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .admin-title { font-size: 28px; font-weight: bold; color: var(--text-primary); }
+        
+        /* Filters Bar */
+        .filters-bar {
+            display: flex; gap: 15px; margin-bottom: 20px; background: var(--card-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); align-items: center; flex-wrap: wrap;
+        }
+        .filter-input {
+            padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; min-width: 200px;
+        }
+        .recycle-bin-btn {
+            margin-left: auto; display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-secondary); font-weight: 600; border: 1px solid var(--border-color); padding: 8px 15px; border-radius: 8px; background: white;
+        }
+        .recycle-bin-btn:hover { color: var(--error); border-color: var(--error); }
+
+        /* Product Table Styles */
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+        }
+        
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th, td { padding: 15px 20px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background: var(--card-bg); font-weight: 600; color: var(--text-secondary); font-size: 14px; text-transform: uppercase; }
+        tr:hover { background-color: #f8fafc; }
+        
+        .product-thumb { width: 50px; height: 50px; object-fit: contain; border-radius: 4px; border: 1px solid var(--border-color); }
+        .action-buttons { display: flex; gap: 8px; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal.open { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+            animation: slideUp 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-size: 24px; font-weight: bold; }
+        .close-modal { background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-secondary); }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;
+            font-family: inherit; font-size: 14px;
+        }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+
+        /* Confirmation Modal Specifics */
+        .confirm-content { max-width: 400px; text-align: center; }
+        .confirm-actions { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+
+        /* Notification Toast */
+        .notification-toast {
+            position: fixed; bottom: 30px; right: 30px;
+            background: var(--success); color: white; padding: 15px 25px;
+            border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transform: translateY(100px); opacity: 0; transition: all 0.3s ease;
+            z-index: 2000; font-weight: 600;
+        }
+        .notification-toast.show { transform: translateY(0); opacity: 1; }
+
+        /* Recycle Bin Styles */
+        .bin-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px; border-bottom: 1px solid var(--border-color);
+        }
+        .bin-item:last-child { border-bottom: none; }
+        .bin-info { font-size: 14px; }
+        .bin-date { font-size: 12px; color: var(--text-secondary); }
+
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .footer { background: var(--text-primary); color: white; padding: 30px 0; margin-top: auto; }
+        .footer-bottom { text-align: center; font-size: 14px; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="nav">
+                <a href="modern_ecommerce_shop.html" class="logo">ShopHub</a>
+                <nav class="nav-menu">
+                    <a href="modern_ecommerce_shop.html" class="nav-link">Shop</a>
+                    <a href="admin.html" class="nav-link active">Admin Dashboard</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="admin-section">
+                <div class="admin-header">
+                    <div class="admin-title">Product Management</div>
+                    <button class="btn btn-primary-solid" onclick="openProductModal('add')">
+                        + Add New Product
+                    </button>
+                </div>
+
+                <!-- Filters Section -->
+                <div class="filters-bar">
+                    <select id="categoryFilter" class="filter-input" onchange="applyFilters()">
+                        <option value="all">All Categories</option>
+                        <option value="electronics">Electronics</option>
+                        <option value="clothing">Clothing</option>
+                        <option value="jewelery">Jewelery</option>
+                        <option value="accessories">Accessories</option>
+                    </select>
+                    <input type="text" id="searchFilter" placeholder="Search by title..." class="filter-input" oninput="applyFilters()">
+                    
+                    <button class="recycle-bin-btn" onclick="openRecycleBin()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Recycle Bin
+                    </button>
+                </div>
+
+                <!-- Product Table -->
+                <div class="table-container">
+                    <table id="productTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">Image</th>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th style="width: 150px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productTableBody">
+                            <!-- Rows will be populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Product Modal -->
+    <div class="modal" id="productModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Add Product</h3>
+                <button class="close-modal" onclick="closeModal('productModal')">&times;</button>
+            </div>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <div class="form-group">
+                    <label for="title">Product Title</label>
+                    <input type="text" id="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="price">Price ($)</label>
+                    <input type="number" id="price" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category" required>
+                        <option value="electronics">Electronics</option>
+                        <option value="clothing">Clothing</option>
+                        <option value="jewelery">Jewelery</option>
+                        <option value="accessories">Accessories</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="image">Image URL</label>
+                    <input type="url" id="image" value="https://placehold.co/400x400" required>
+                </div>
+                <button type="submit" class="btn btn-primary-solid" style="width: 100%;">Save Product</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content confirm-content">
+            <div class="modal-header" style="justify-content: center; border: none; margin-bottom: 0;">
+                <div style="color: var(--error);">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+            </div>
+            <h3 style="margin-bottom: 10px;">Are you sure?</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">Do you really want to delete this product? This item will be moved to the Recycle Bin for 30 days.</p>
+            <div class="confirm-actions">
+                <button class="btn btn-secondary" onclick="closeModal('deleteModal')">No, Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recycle Bin Modal -->
+    <div class="modal" id="recycleBinModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Recycle Bin (30 Days)</h3>
+                <button class="close-modal" onclick="closeModal('recycleBinModal')">&times;</button>
+            </div>
+            <div id="recycleBinList" style="max-height: 400px; overflow-y: auto;">
+                <!-- Deleted items go here -->
+            </div>
+            <div style="text-align: center; margin-top: 20px; color: var(--text-secondary); font-size: 12px;">
+                Items are automatically removed after 30 days.
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="notification-toast">Action Successful!</div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2024 ShopHub Admin Panel</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE_URL = 'https://fakestoreapi.com';
+        let allProducts = [];
+        let productToDeleteId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAndRenderProducts();
+            cleanupRecycleBin(); // Check for expired items on load
+            document.getElementById('productForm').addEventListener('submit', handleFormSubmit);
+            document.getElementById('confirmDeleteBtn').addEventListener('click', performDelete);
+        });
+
+        // --- Data Fetching ---
+        async function fetchAndRenderProducts() {
+            const tbody = document.getElementById('productTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Loading products...</td></tr>';
+
+            try {
+                // 1. Fetch API Data
+                const response = await fetch(`${API_BASE_URL}/products`);
+                const apiProducts = await response.json();
+
+                // 2. Fetch Local Storage Data
+                const localProducts = JSON.parse(localStorage.getItem('localProducts')) || [];
+
+                // 3. Merge (Local products first)
+                allProducts = [...localProducts, ...apiProducts];
+
+                // 4. Render
+                applyFilters(); // Use filter logic to render
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center;">Error loading products: ${error.message}</td></tr>`;
+            }
+        }
+
+        // --- Filtering ---
+        function applyFilters() {
+            const category = document.getElementById('categoryFilter').value;
+            const searchTerm = document.getElementById('searchFilter').value.toLowerCase();
+
+            const filtered = allProducts.filter(product => {
+                const matchesCategory = category === 'all' || product.category === category || 
+                                      (category === 'clothing' && (product.category === "men's clothing" || product.category === "women's clothing"));
+                const matchesSearch = product.title.toLowerCase().includes(searchTerm);
+                return matchesCategory && matchesSearch;
+            });
+
+            renderTable(filtered);
+        }
+
+        function renderTable(products) {
+            const tbody = document.getElementById('productTableBody');
+            tbody.innerHTML = '';
+
+            if (products.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">No products found.</td></tr>';
+                return;
+            }
+
+            products.forEach(product => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><img src="${product.image}" alt="${product.title}" class="product-thumb"></td>
+                    <td style="font-weight: 500;">${product.title}</td>
+                    <td style="text-transform: capitalize; color: var(--text-secondary);">${product.category}</td>
+                    <td style="color: var(--primary-color); font-weight: bold;">$${parseFloat(product.price).toFixed(2)}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-edit btn-sm" onclick="openProductModal('edit', ${product.id})">Update</button>
+                            <button class="btn btn-danger btn-sm" onclick="initiateDelete(${product.id})">Delete</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- Modal Functions ---
+        function openProductModal(mode, id = null) {
+            const modal = document.getElementById('productModal');
+            const title = document.getElementById('modalTitle');
+            const form = document.getElementById('productForm');
+
+            modal.classList.add('open');
+
+            if (mode === 'edit') {
+                title.textContent = 'Update Product';
+                const product = allProducts.find(p => p.id === id);
+                if (product) {
+                    document.getElementById('productId').value = product.id;
+                    document.getElementById('title').value = product.title;
+                    document.getElementById('price').value = product.price;
+                    document.getElementById('category').value = product.category;
+                    document.getElementById('description').value = product.description;
+                    document.getElementById('image').value = product.image;
+                }
+            } else {
+                title.textContent = 'Add New Product';
+                form.reset();
+                document.getElementById('productId').value = '';
+                document.getElementById('image').value = 'https://placehold.co/400x400';
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('open');
+        }
+
+        // --- Form Handling (Add/Update) ---
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('productId').value;
+            const newProductData = {
+                id: id ? parseInt(id) : Date.now(),
+                title: document.getElementById('title').value,
+                price: parseFloat(document.getElementById('price').value),
+                category: document.getElementById('category').value,
+                description: document.getElementById('description').value,
+                image: document.getElementById('image').value
+            };
+
+            if (id) {
+                // Update Existing
+                const index = allProducts.findIndex(p => p.id == id);
+                if (index !== -1) {
+                    allProducts[index] = { ...allProducts[index], ...newProductData };
+                    updateLocalProductStorage(newProductData);
+                    showToast("Product updated successfully!");
+                }
+            } else {
+                // Add New
+                allProducts.unshift(newProductData);
+                const localProducts = JSON.parse(localStorage.getItem('localProducts')) || [];
+                localProducts.unshift(newProductData);
+                localStorage.setItem('localProducts', JSON.stringify(localProducts));
+                showToast("Product added successfully!");
+            }
+
+            applyFilters(); // Re-render with filters
+            closeModal('productModal');
+        }
+
+        // --- Delete Logic with Confirmation & Recycle Bin ---
+        function initiateDelete(id) {
+            productToDeleteId = id;
+            const modal = document.getElementById('deleteModal');
+            modal.classList.add('open');
+        }
+
+        function performDelete() {
+            if (!productToDeleteId) return;
+
+            const product = allProducts.find(p => p.id === productToDeleteId);
+            
+            if (product) {
+                // 1. Move to Bin
+                addToRecycleBin(product);
+
+                // 2. Remove from Main List
+                allProducts = allProducts.filter(p => p.id !== productToDeleteId);
+                
+                // 3. Update Local Storage if necessary
+                let localProducts = JSON.parse(localStorage.getItem('localProducts')) || [];
+                const initialLen = localProducts.length;
+                localProducts = localProducts.filter(p => p.id !== productToDeleteId);
+                if (localProducts.length !== initialLen) {
+                    localStorage.setItem('localProducts', JSON.stringify(localProducts));
+                }
+
+                applyFilters();
+                showToast("Product moved to Recycle Bin.");
+            }
+
+            closeModal('deleteModal');
+            productToDeleteId = null;
+        }
+
+        // --- Recycle Bin Logic ---
+        function addToRecycleBin(product) {
+            const bin = JSON.parse(localStorage.getItem('recycleBin')) || [];
+            const binItem = {
+                ...product,
+                deletedAt: Date.now()
+            };
+            bin.unshift(binItem);
+            localStorage.setItem('recycleBin', JSON.stringify(bin));
+        }
+
+        function cleanupRecycleBin() {
+            const bin = JSON.parse(localStorage.getItem('recycleBin')) || [];
+            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+            const now = Date.now();
+
+            const validItems = bin.filter(item => (now - item.deletedAt) < thirtyDaysMs);
+            
+            if (bin.length !== validItems.length) {
+                localStorage.setItem('recycleBin', JSON.stringify(validItems));
+            }
+        }
+
+        function openRecycleBin() {
+            const modal = document.getElementById('recycleBinModal');
+            const listContainer = document.getElementById('recycleBinList');
+            const bin = JSON.parse(localStorage.getItem('recycleBin')) || [];
+
+            listContainer.innerHTML = '';
+
+            if (bin.length === 0) {
+                listContainer.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding:20px;">Bin is empty.</p>';
+            } else {
+                bin.forEach(item => {
+                    const date = new Date(item.deletedAt).toLocaleDateString();
+                    const div = document.createElement('div');
+                    div.className = 'bin-item';
+                    div.innerHTML = `
+                        <div class="bin-info">
+                            <strong>${item.title}</strong>
+                            <div class="bin-date">Deleted: ${date}</div>
+                        </div>
+                        <button class="btn-sm btn-edit" onclick="restoreProduct(${item.id})">Restore</button>
+                    `;
+                    listContainer.appendChild(div);
+                });
+            }
+
+            modal.classList.add('open');
+        }
+
+        function restoreProduct(id) {
+            let bin = JSON.parse(localStorage.getItem('recycleBin')) || [];
+            const itemIndex = bin.findIndex(p => p.id === id);
+
+            if (itemIndex !== -1) {
+                const item = bin[itemIndex];
+                // Remove deletedAt meta data
+                const { deletedAt, ...productData } = item;
+
+                // Add back to local products
+                let localProducts = JSON.parse(localStorage.getItem('localProducts')) || [];
+                localProducts.unshift(productData);
+                localStorage.setItem('localProducts', JSON.stringify(localProducts));
+
+                // Remove from bin
+                bin.splice(itemIndex, 1);
+                localStorage.setItem('recycleBin', JSON.stringify(bin));
+
+                // Refresh UI
+                openRecycleBin(); // Refresh bin list
+                fetchAndRenderProducts(); // Refresh main table
+                showToast("Product restored successfully!");
+            }
+        }
+
+        // --- Helpers ---
+        function updateLocalProductStorage(updatedProduct) {
+            let localProducts = JSON.parse(localStorage.getItem('localProducts')) || [];
+            const index = localProducts.findIndex(p => p.id === updatedProduct.id);
+            if (index !== -1) {
+                localProducts[index] = updatedProduct;
+                localStorage.setItem('localProducts', JSON.stringify(localProducts));
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('open');
+            }
+        }
+    </script>
+</body>
+</html>
