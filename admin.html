@@ -125,6 +125,7 @@
             z-index: 2000; font-weight: 600;
         }
         .notification-toast.show { transform: translateY(0); opacity: 1; }
+        .notification-toast.error { background: var(--error); }
 
         /* Recycle Bin Styles */
         .bin-item {
@@ -149,6 +150,7 @@
                 <a href="modern_ecommerce_shop.html" class="logo">ShopHub</a>
                 <nav class="nav-menu">
                     <a href="modern_ecommerce_shop.html" class="nav-link">Shop</a>
+                    <a href="order_management.html" class="nav-link">Orders</a>
                     <a href="admin.html" class="nav-link active">Admin Dashboard</a>
                 </nav>
             </div>
@@ -220,8 +222,16 @@
                     <input type="text" id="title" required>
                 </div>
                 <div class="form-group">
+                    <label for="brand">Brand</label>
+                    <input type="text" id="brand">
+                </div>
+                <div class="form-group">
                     <label for="price">Price ($)</label>
                     <input type="number" id="price" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="stockQuantity">Stock Quantity</label>
+                    <input type="number" id="stockQuantity" required>
                 </div>
                 <div class="form-group">
                     <label for="category">Category</label>
@@ -230,6 +240,7 @@
                         <option value="clothing">Clothing</option>
                         <option value="jewelery">Jewelery</option>
                         <option value="accessories">Accessories</option>
+                        <option value="other">Other</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -237,8 +248,16 @@
                     <textarea id="description" required></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="image">Image URL</label>
-                    <input type="url" id="image" value="https://placehold.co/400x400" required>
+                    <label for="availability">Availability</label>
+                    <select id="availability">
+                        <option value="true">In Stock</option>
+                        <option value="false">Out of Stock</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="imageFile">Product Image</label>
+                    <input type="file" id="imageFile" accept="image/*">
+                    <small style="color: var(--text-secondary);">Leave empty to keep existing image (if editing)</small>
                 </div>
                 <button type="submit" class="btn btn-primary-solid" style="width: 100%;">Save Product</button>
             </form>
@@ -258,7 +277,7 @@
                 </div>
             </div>
             <h3 style="margin-bottom: 10px;">Are you sure?</h3>
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">Do you really want to delete this product? This item will be moved to the Recycle Bin for 30 days.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">Do you really want to delete this product? This action cannot be undone.</p>
             <div class="confirm-actions">
                 <button class="btn btn-secondary" onclick="closeModal('deleteModal')">No, Cancel</button>
                 <button class="btn btn-danger" id="confirmDeleteBtn">Yes, Delete</button>
@@ -270,14 +289,14 @@
     <div class="modal" id="recycleBinModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">Recycle Bin (30 Days)</h3>
+                <h3 class="modal-title">Recycle Bin</h3>
                 <button class="close-modal" onclick="closeModal('recycleBinModal')">&times;</button>
             </div>
             <div id="recycleBinList" style="max-height: 400px; overflow-y: auto;">
                 <!-- Deleted items go here -->
             </div>
             <div style="text-align: center; margin-top: 20px; color: var(--text-secondary); font-size: 12px;">
-                Items are automatically removed after 30 days.
+                Note: Backend deletion is permanent. Recycle bin only stores locally deleted references for session.
             </div>
         </div>
     </div>
@@ -295,13 +314,12 @@
     </footer>
 
     <script>
-        const API_BASE_URL = 'https://fakestoreapi.com';
+        const API_BASE_URL = 'http://localhost:8080/api';
         let allProducts = [];
         let productToDeleteId = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchAndRenderProducts();
-            cleanupRecycleBin(); // Check for expired items on load
             document.getElementById('productForm').addEventListener('submit', handleFormSubmit);
             document.getElementById('confirmDeleteBtn').addEventListener('click', performDelete);
         });
@@ -309,34 +327,36 @@
         // --- Data Fetching ---
         async function fetchAndRenderProducts() {
             const tbody = document.getElementById('productTableBody');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Loading products...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Loading products from backend...</td></tr>';
 
             try {
-                // 1. Fetch API Data
+                // Fetch API Data from Spring Boot
                 const response = await fetch(`${API_BASE_URL}/products`);
-                const apiProducts = await response.json();
+                if (!response.ok) throw new Error('Failed to fetch from backend');
+                
+                const products = await response.json();
 
-                // 2. Fetch Local Storage Data
-                const localProducts = JSON.parse(localStorage.getItem('localProducts')) || [];
+                // Map products to include image URL
+                allProducts = products.map(p => ({
+                    ...p,
+                    imageUrl: `${API_BASE_URL}/product/${p.id}/image`
+                }));
 
-                // 3. Merge (Local products first)
-                allProducts = [...localProducts, ...apiProducts];
-
-                // 4. Render
-                applyFilters(); // Use filter logic to render
+                // Render
+                applyFilters();
             } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center;">Error loading products: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center;">Error loading products: ${error.message}<br>Ensure backend is running on port 8080</td></tr>`;
             }
         }
 
         // --- Filtering ---
         function applyFilters() {
-            const category = document.getElementById('categoryFilter').value;
+            const category = document.getElementById('categoryFilter').value.toLowerCase();
             const searchTerm = document.getElementById('searchFilter').value.toLowerCase();
 
             const filtered = allProducts.filter(product => {
-                const matchesCategory = category === 'all' || product.category === category || 
-                                      (category === 'clothing' && (product.category === "men's clothing" || product.category === "women's clothing"));
+                const prodCat = product.category ? product.category.toLowerCase() : '';
+                const matchesCategory = category === 'all' || prodCat === category || prodCat.includes(category);
                 const matchesSearch = product.title.toLowerCase().includes(searchTerm);
                 return matchesCategory && matchesSearch;
             });
@@ -356,7 +376,7 @@
             products.forEach(product => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><img src="${product.image}" alt="${product.title}" class="product-thumb"></td>
+                    <td><img src="${product.imageUrl}" alt="${product.title}" class="product-thumb" onerror="this.src='https://placehold.co/50?text=No+Img'"></td>
                     <td style="font-weight: 500;">${product.title}</td>
                     <td style="text-transform: capitalize; color: var(--text-secondary);">${product.category}</td>
                     <td style="color: var(--primary-color); font-weight: bold;">$${parseFloat(product.price).toFixed(2)}</td>
@@ -385,16 +405,19 @@
                 if (product) {
                     document.getElementById('productId').value = product.id;
                     document.getElementById('title').value = product.title;
+                    document.getElementById('brand').value = product.brand || '';
                     document.getElementById('price').value = product.price;
-                    document.getElementById('category').value = product.category;
+                    document.getElementById('stockQuantity').value = product.stockQuantity;
+                    document.getElementById('category').value = product.category ? product.category.toLowerCase() : 'other';
                     document.getElementById('description').value = product.description;
-                    document.getElementById('image').value = product.image;
+                    document.getElementById('availability').value = product.availability;
+                    // Note: File input cannot be set programmatically for security reasons
                 }
             } else {
                 title.textContent = 'Add New Product';
                 form.reset();
                 document.getElementById('productId').value = '';
-                document.getElementById('image').value = 'https://placehold.co/400x400';
+                document.getElementById('availability').value = 'true';
             }
         }
 
@@ -403,96 +426,116 @@
         }
 
         // --- Form Handling (Add/Update) ---
-        function handleFormSubmit(e) {
+        async function handleFormSubmit(e) {
             e.preventDefault();
 
             const id = document.getElementById('productId').value;
-            const newProductData = {
-                id: id ? parseInt(id) : Date.now(),
+            const imageInput = document.getElementById('imageFile');
+            
+            // Construct Product Object
+            const productData = {
                 title: document.getElementById('title').value,
+                brand: document.getElementById('brand').value,
                 price: parseFloat(document.getElementById('price').value),
+                stockQuantity: parseInt(document.getElementById('stockQuantity').value),
                 category: document.getElementById('category').value,
                 description: document.getElementById('description').value,
-                image: document.getElementById('image').value
+                availability: document.getElementById('availability').value === 'true',
+                releaseDate: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'), // Format dd-MM-yyyy
+                createDate: new Date().toLocaleDateString('en-GB').replace(/\//g, '-')
             };
 
+            // If updating, include ID
             if (id) {
-                // Update Existing
-                const index = allProducts.findIndex(p => p.id == id);
-                if (index !== -1) {
-                    allProducts[index] = { ...allProducts[index], ...newProductData };
-                    updateLocalProductStorage(newProductData);
-                    showToast("Product updated successfully!");
-                }
-            } else {
-                // Add New
-                allProducts.unshift(newProductData);
-                const localProducts = JSON.parse(localStorage.getItem('localProducts')) || [];
-                localProducts.unshift(newProductData);
-                localStorage.setItem('localProducts', JSON.stringify(localProducts));
-                showToast("Product added successfully!");
+                productData.id = parseInt(id);
             }
 
-            applyFilters(); // Re-render with filters
-            closeModal('productModal');
+            // Create FormData for Multipart Request
+            const formData = new FormData();
+            
+            // Spring Boot @RequestPart expects JSON string for the 'product' part
+            formData.append('product', new Blob([JSON.stringify(productData)], { type: 'application/json' }));
+            
+            // Handle Image File
+            if (imageInput.files[0]) {
+                formData.append('imageFile', imageInput.files[0]);
+            } else {
+                // Ideally, backend should handle updates without file.
+                // If backend mandates file, we might need a workaround or check backend logic.
+                // For now, if editing and no file, we might need to send a dummy or rely on backend to ignore empty file.
+                // Based on provided backend, it expects MultipartFile. 
+                if (id) {
+                    // Create empty blob to satisfy the parameter requirement if updating without changing image
+                    // Warning: This assumes backend handles empty file for updates gracefully or we need to enforce re-upload
+                    formData.append('imageFile', new Blob([], { type: 'application/octet-stream' }), "empty.jpg"); 
+                } else {
+                    alert("Please select an image for new products.");
+                    return;
+                }
+            }
+
+            const url = id ? `${API_BASE_URL}/product/${id}` : `${API_BASE_URL}/product`;
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    body: formData // No Content-Type header, browser sets it with boundary
+                });
+
+                if (response.ok) {
+                    showToast(id ? "Product updated successfully!" : "Product added successfully!");
+                    closeModal('productModal');
+                    fetchAndRenderProducts(); // Refresh list
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(errorText || response.statusText);
+                }
+            } catch (error) {
+                console.error("Error saving product:", error);
+                showToast("Error saving product: " + error.message, true);
+            }
         }
 
-        // --- Delete Logic with Confirmation & Recycle Bin ---
+        // --- Delete Logic ---
         function initiateDelete(id) {
             productToDeleteId = id;
             const modal = document.getElementById('deleteModal');
             modal.classList.add('open');
         }
 
-        function performDelete() {
+        async function performDelete() {
             if (!productToDeleteId) return;
 
-            const product = allProducts.find(p => p.id === productToDeleteId);
-            
-            if (product) {
-                // 1. Move to Bin
-                addToRecycleBin(product);
+            try {
+                const response = await fetch(`${API_BASE_URL}/product/${productToDeleteId}`, {
+                    method: 'DELETE'
+                });
 
-                // 2. Remove from Main List
-                allProducts = allProducts.filter(p => p.id !== productToDeleteId);
-                
-                // 3. Update Local Storage if necessary
-                let localProducts = JSON.parse(localStorage.getItem('localProducts')) || [];
-                const initialLen = localProducts.length;
-                localProducts = localProducts.filter(p => p.id !== productToDeleteId);
-                if (localProducts.length !== initialLen) {
-                    localStorage.setItem('localProducts', JSON.stringify(localProducts));
+                if (response.ok) {
+                    // Add to local recycle bin for history (optional)
+                    const product = allProducts.find(p => p.id === productToDeleteId);
+                    if(product) addToRecycleBin(product);
+
+                    showToast("Product deleted from database.");
+                    fetchAndRenderProducts(); // Refresh list
+                } else {
+                    throw new Error("Failed to delete");
                 }
-
-                applyFilters();
-                showToast("Product moved to Recycle Bin.");
+            } catch (error) {
+                showToast("Error deleting product", true);
             }
 
             closeModal('deleteModal');
             productToDeleteId = null;
         }
 
-        // --- Recycle Bin Logic ---
+        // --- Recycle Bin Logic (Local Only) ---
         function addToRecycleBin(product) {
             const bin = JSON.parse(localStorage.getItem('recycleBin')) || [];
-            const binItem = {
-                ...product,
-                deletedAt: Date.now()
-            };
+            const binItem = { ...product, deletedAt: Date.now() };
             bin.unshift(binItem);
             localStorage.setItem('recycleBin', JSON.stringify(bin));
-        }
-
-        function cleanupRecycleBin() {
-            const bin = JSON.parse(localStorage.getItem('recycleBin')) || [];
-            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-            const now = Date.now();
-
-            const validItems = bin.filter(item => (now - item.deletedAt) < thirtyDaysMs);
-            
-            if (bin.length !== validItems.length) {
-                localStorage.setItem('recycleBin', JSON.stringify(validItems));
-            }
         }
 
         function openRecycleBin() {
@@ -512,9 +555,8 @@
                     div.innerHTML = `
                         <div class="bin-info">
                             <strong>${item.title}</strong>
-                            <div class="bin-date">Deleted: ${date}</div>
+                            <div class="bin-date">Deleted locally: ${date}</div>
                         </div>
-                        <button class="btn-sm btn-edit" onclick="restoreProduct(${item.id})">Restore</button>
                     `;
                     listContainer.appendChild(div);
                 });
@@ -523,44 +565,13 @@
             modal.classList.add('open');
         }
 
-        function restoreProduct(id) {
-            let bin = JSON.parse(localStorage.getItem('recycleBin')) || [];
-            const itemIndex = bin.findIndex(p => p.id === id);
-
-            if (itemIndex !== -1) {
-                const item = bin[itemIndex];
-                // Remove deletedAt meta data
-                const { deletedAt, ...productData } = item;
-
-                // Add back to local products
-                let localProducts = JSON.parse(localStorage.getItem('localProducts')) || [];
-                localProducts.unshift(productData);
-                localStorage.setItem('localProducts', JSON.stringify(localProducts));
-
-                // Remove from bin
-                bin.splice(itemIndex, 1);
-                localStorage.setItem('recycleBin', JSON.stringify(bin));
-
-                // Refresh UI
-                openRecycleBin(); // Refresh bin list
-                fetchAndRenderProducts(); // Refresh main table
-                showToast("Product restored successfully!");
-            }
-        }
-
         // --- Helpers ---
-        function updateLocalProductStorage(updatedProduct) {
-            let localProducts = JSON.parse(localStorage.getItem('localProducts')) || [];
-            const index = localProducts.findIndex(p => p.id === updatedProduct.id);
-            if (index !== -1) {
-                localProducts[index] = updatedProduct;
-                localStorage.setItem('localProducts', JSON.stringify(localProducts));
-            }
-        }
-
-        function showToast(message) {
+        function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
+            if (isError) toast.classList.add('error');
+            else toast.classList.remove('error');
+            
             toast.classList.add('show');
             setTimeout(() => {
                 toast.classList.remove('show');

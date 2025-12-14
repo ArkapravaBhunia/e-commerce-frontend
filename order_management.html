@@ -33,6 +33,7 @@
         /* Status Badges */
         .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
         .status-pending { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+        .status-placed { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; } /* Added for backend status */
         .status-processing { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
         .status-shipped { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
         .status-cancelled { background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; }
@@ -86,9 +87,8 @@
                 <a href="#" class="logo">ShopHub Admin</a>
                 <nav class="nav-menu">
                     <a href="modern_ecommerce_shop.html" class="nav-link">Go to Shop</a>
-                    <a href="#" class="nav-link active">Orders</a>
-                    <a href="#" class="nav-link">Inventory</a>
-                    <a href="#" class="nav-link">Settings</a>
+                    <a href="order_management.html" class="nav-link active">Orders</a>
+                    <a href="admin.html" class="nav-link">Inventory</a>
                 </nav>
             </div>
         </div>
@@ -172,30 +172,17 @@
     </div>
 
     <script>
-        // --- Service Layer (REST API Compatible) ---
+        // --- Service Layer (Connected to Spring Boot Backend) ---
         const OrderService = {
-            // URL to your future Spring Boot backend
-            baseUrl: 'http://localhost:8080/api/v1', 
+            baseUrl: 'http://localhost:8080/api', 
 
             async getOrders() {
                 try {
-                    // Future Real Implementation:
-                    // const response = await fetch(`${this.baseUrl}/orders`);
-                    // return await response.json();
-
-                    // MOCK IMPLEMENTATION:
-                    // Simulating a network delay
-                    await new Promise(resolve => setTimeout(resolve, 600));
-                    
-                    // Check if we have orders stored from the Shop page checkout simulation
-                    const localOrders = JSON.parse(localStorage.getItem('shopHub_orders') || '[]');
-                    
-                    // If no local orders, generate dummy data for demonstration
-                    if (localOrders.length === 0) {
-                        return this.generateDummyOrders();
+                    const response = await fetch(`${this.baseUrl}/orders`);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch orders from backend');
                     }
-                    return localOrders;
-
+                    return await response.json();
                 } catch (error) {
                     console.error("Failed to fetch orders:", error);
                     return [];
@@ -203,50 +190,11 @@
             },
 
             async getOrderById(orderId) {
-                // Future Real Implementation:
-                // const response = await fetch(`${this.baseUrl}/orders/${orderId}`);
-                // return await response.json();
-
-                // Mock Implementation:
+                // Since the backend 'getAllOrders' returns full details including items,
+                // we can just fetch all and find the specific one.
+                // In a real large-scale app, you'd want a specific /orders/{id} endpoint.
                 const orders = await this.getOrders();
                 return orders.find(o => o.orderId === orderId);
-            },
-
-            // Helper to generate fake data if localStorage is empty
-            generateDummyOrders() {
-                return [
-                    {
-                        orderId: 'ORD-7829-221',
-                        customer: { name: 'Alice Smith', email: 'alice.s@example.com' },
-                        orderDate: new Date().toISOString(),
-                        status: 'Pending',
-                        totalAmount: 129.99,
-                        items: [
-                            { title: 'Fjallraven Backpack', price: 109.95, quantity: 1, image: 'https://fakestoreapi.com/img/81fPKDq-2L._AC_SL1500_.jpg' },
-                            { title: 'Mens Casual T-Shirt', price: 20.04, quantity: 1, image: 'https://fakestoreapi.com/img/71-3HjGNDUL._AC_SY879._SX._UX._SY._UY_.jpg' }
-                        ]
-                    },
-                    {
-                        orderId: 'ORD-9921-003',
-                        customer: { name: 'Bob Jones', email: 'bobby.j@testmail.com' },
-                        orderDate: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-                        status: 'Shipped',
-                        totalAmount: 695.00,
-                        items: [
-                            { title: 'Naga Gold Bracelet', price: 695.00, quantity: 1, image: 'https://fakestoreapi.com/img/71pWzhdJNwL._AC_UL640_QL65_ML3_.jpg' }
-                        ]
-                    },
-                    {
-                        orderId: 'ORD-1102-445',
-                        customer: { name: 'Charlie Day', email: 'charlie@paddys.pub' },
-                        orderDate: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-                        status: 'Cancelled',
-                        totalAmount: 55.99,
-                        items: [
-                            { title: 'Mens Cotton Jacket', price: 55.99, quantity: 1, image: 'https://fakestoreapi.com/img/71li-ujtlUL._AC_UX679_.jpg' }
-                        ]
-                    }
-                ];
             }
         };
 
@@ -258,7 +206,7 @@
 
         async function fetchOrders() {
             const tbody = document.getElementById('ordersTableBody');
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading order data...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading order data from backend...</td></tr>';
 
             const orders = await OrderService.getOrders();
             renderTable(orders);
@@ -269,31 +217,47 @@
             tbody.innerHTML = '';
 
             if (orders.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px;">No orders found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px;">No orders found in database.</td></tr>';
                 return;
             }
+
+            // Sort orders by date descending (newest first)
+            orders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
 
             orders.forEach(order => {
                 const tr = document.createElement('tr');
                 
-                // Helper to format item summary
-                const itemCount = order.items.reduce((acc, item) => acc + (item.quantity || 1), 0);
-                const itemSummary = `${itemCount} items (${order.items[0].title.substring(0, 15)}...)`;
+                // Calculate item count and total from the response structure
+                const itemCount = order.items ? order.items.reduce((acc, item) => acc + (item.quantity || 1), 0) : 0;
                 
+                // Generate a summary string
+                let itemSummary = "No items";
+                if (order.items && order.items.length > 0) {
+                    const firstItemName = order.items[0].productName || "Unknown Product";
+                    itemSummary = `${itemCount} items (${truncateText(firstItemName, 15)}...)`;
+                }
+                
+                // Calculate Total from items if not provided at root
+                // The DTO from backend has 'items' which contain 'totalPrice'
+                let orderTotal = 0;
+                if (order.items) {
+                    orderTotal = order.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+                }
+
                 // Format Date
                 const dateObj = new Date(order.orderDate);
-                const formattedDate = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const formattedDate = dateObj.toLocaleDateString();
 
                 tr.innerHTML = `
                     <td style="font-family: monospace; font-weight: 600;">${order.orderId}</td>
                     <td>
-                        <div style="font-weight: 500;">${order.customer.name}</div>
-                        <div style="font-size: 12px; color: var(--text-secondary);">${order.customer.email}</div>
+                        <div style="font-weight: 500;">${order.customerName}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">${order.email}</div>
                     </td>
                     <td>${formattedDate}</td>
                     <td>${itemSummary}</td>
                     <td>${getStatusBadge(order.status)}</td>
-                    <td style="font-weight: 600;">$${parseFloat(order.totalAmount).toFixed(2)}</td>
+                    <td style="font-weight: 600;">$${parseFloat(orderTotal).toFixed(2)}</td>
                     <td>
                         <button class="action-btn" onclick="openOrderModal('${order.orderId}')">View Details</button>
                     </td>
@@ -308,33 +272,42 @@
 
             // Fill Modal Data
             document.getElementById('modalOrderId').textContent = `Order #${order.orderId}`;
-            document.getElementById('modalDate').textContent = `Placed on ${new Date(order.orderDate).toLocaleString()}`;
-            document.getElementById('modalCustomerName').textContent = order.customer.name;
-            document.getElementById('modalCustomerEmail').textContent = order.customer.email;
+            document.getElementById('modalDate').textContent = `Placed on ${new Date(order.orderDate).toLocaleDateString()}`;
+            document.getElementById('modalCustomerName').textContent = order.customerName;
+            document.getElementById('modalCustomerEmail').textContent = order.email;
             document.getElementById('modalStatusBadge').innerHTML = getStatusBadge(order.status);
-            document.getElementById('modalTotal').textContent = `$${parseFloat(order.totalAmount).toFixed(2)}`;
+            
+            // Calculate total for modal
+            let total = 0;
+            if (order.items) {
+                total = order.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+            }
+            document.getElementById('modalTotal').textContent = `$${parseFloat(total).toFixed(2)}`;
 
             // Fill Items
             const itemsContainer = document.getElementById('modalItemsList');
             itemsContainer.innerHTML = '';
             
-            order.items.forEach(item => {
-                const itemRow = document.createElement('div');
-                itemRow.className = 'order-item';
-                
-                // Handle image fallback
-                const imgSrc = item.image || 'https://placehold.co/50';
-                
-                itemRow.innerHTML = `
-                    <img src="${imgSrc}" class="item-img" alt="${item.title}">
-                    <div class="item-details">
-                        <div class="item-title">${item.title}</div>
-                        <div class="item-meta">Qty: ${item.quantity || 1} | Unit: $${item.price}</div>
-                    </div>
-                    <div class="item-price">$${((item.quantity || 1) * item.price).toFixed(2)}</div>
-                `;
-                itemsContainer.appendChild(itemRow);
-            });
+            if (order.items) {
+                order.items.forEach(item => {
+                    const itemRow = document.createElement('div');
+                    itemRow.className = 'order-item';
+                    
+                    // Backend order response currently doesn't include image URL in OrderItemResponse
+                    // Using placeholder for now
+                    const imgSrc = 'https://placehold.co/50';
+                    
+                    itemRow.innerHTML = `
+                        <img src="${imgSrc}" class="item-img" alt="Product Image">
+                        <div class="item-details">
+                            <div class="item-title">${item.productName}</div>
+                            <div class="item-meta">Qty: ${item.quantity}</div>
+                        </div>
+                        <div class="item-price">$${(item.totalPrice).toFixed(2)}</div>
+                    `;
+                    itemsContainer.appendChild(itemRow);
+                });
+            }
 
             // Show Modal
             document.getElementById('orderModal').classList.add('active');
@@ -354,13 +327,19 @@
 
         // Utility: Get HTML badge for status
         function getStatusBadge(status) {
-            const s = status.toLowerCase();
+            const s = status ? status.toLowerCase() : 'pending';
             let className = 'status-pending'; // Default
             if (s === 'completed' || s === 'shipped') className = 'status-shipped';
             if (s === 'cancelled') className = 'status-cancelled';
             if (s === 'processing') className = 'status-processing';
+            if (s === 'placed') className = 'status-placed';
             
             return `<span class="status-badge ${className}">${status}</span>`;
+        }
+
+        function truncateText(text, length) {
+            if (text.length <= length) return text;
+            return text.substring(0, length) + '...';
         }
     </script>
 </body>
