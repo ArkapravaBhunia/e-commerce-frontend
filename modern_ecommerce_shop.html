@@ -741,96 +741,6 @@
             color: rgba(255, 255, 255, 0.6);
         }
 
-        /* Auth Modal */
-        .auth-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(5px);
-        }
-
-        .auth-modal.open {
-            display: flex;
-        }
-
-        .auth-modal-content {
-            background: white;
-            border-radius: 20px;
-            max-width: 450px;
-            width: 90%;
-            padding: 40px;
-            position: relative;
-            animation: slideUp 0.3s ease;
-        }
-
-        .auth-modal h2 {
-            margin-bottom: 30px;
-            color: var(--text-primary);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid var(--border-color);
-            border-radius: 10px;
-            font-size: 16px;
-            transition: all 0.3s;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 14px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-submit:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-        }
-
-        .auth-switch {
-            text-align: center;
-            margin-top: 20px;
-            color: var(--text-secondary);
-        }
-
-        .auth-switch a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
         .close-btn {
             position: absolute;
             top: 20px;
@@ -1024,8 +934,8 @@
                 </nav>
                 <div class="nav-actions">
                     <div class="auth-buttons">
-                        <button class="btn-auth btn-login" id="loginBtn">Login</button>
-                        <button class="btn-auth btn-register" id="registerBtn">Register</button>
+                        <!-- Redirecting logic will be in Checkout -->
+                        <span id="welcome-msg" style="font-weight: 500; color: var(--primary-color);"></span>
                     </div>
                     <div class="search-box">
                         <input type="text" id="searchInput" placeholder="Search products..." class="search-input">
@@ -1168,33 +1078,6 @@
         </div>
     </footer>
 
-    <!-- Auth Modal -->
-    <div class="auth-modal" id="authModal">
-        <div class="auth-modal-content">
-            <button class="close-btn" id="closeAuthModal">&times;</button>
-            <h2 id="authTitle">Login</h2>
-            <form id="authForm">
-                <div class="form-group">
-                    <label for="authEmail">Email</label>
-                    <input type="email" id="authEmail" required>
-                </div>
-                <div class="form-group">
-                    <label for="authPassword">Password</label>
-                    <input type="password" id="authPassword" required>
-                </div>
-                <div class="form-group" id="nameGroup" style="display: none;">
-                    <label for="authName">Full Name</label>
-                    <input type="text" id="authName">
-                </div>
-                <button type="submit" class="btn-submit" id="authSubmitBtn">Login</button>
-            </form>
-            <div class="auth-switch">
-                <span id="authSwitchText">Don't have an account?</span>
-                <a href="#" id="authSwitchLink">Register</a>
-            </div>
-        </div>
-    </div>
-
     <!-- Cart Sidebar -->
     <div class="cart-sidebar" id="cartSidebar">
         <div class="cart-header">
@@ -1209,7 +1092,7 @@
                 <span>Total:</span>
                 <span class="total-price" id="totalPrice">$0.00</span>
             </div>
-            <button class="btn btn-primary-solid" style="width: 100%;" id="checkoutBtn">Checkout</button>
+            <button class="btn btn-primary-solid" style="width: 100%;" id="checkoutBtn">Proceed to Checkout</button>
         </div>
     </div>
 
@@ -1227,7 +1110,6 @@
         let cart = [];
         let currentCategory = 'all';
         let currentSlide = 0;
-        let isLoggedIn = false;
         let currentUser = null;
 
         // --- DOM ELEMENTS ---
@@ -1248,17 +1130,7 @@
         const heroSlider = document.getElementById('heroSlider');
         const heroDots = document.getElementById('heroDots');
         
-        // Auth Elements
-        const loginBtn = document.getElementById('loginBtn');
-        const registerBtn = document.getElementById('registerBtn');
-        const authModal = document.getElementById('authModal');
-        const closeAuthModal = document.getElementById('closeAuthModal');
-        const authForm = document.getElementById('authForm');
-        const authTitle = document.getElementById('authTitle');
-        const authSubmitBtn = document.getElementById('authSubmitBtn');
-        const authSwitchLink = document.getElementById('authSwitchLink');
-        const authSwitchText = document.getElementById('authSwitchText');
-        const nameGroup = document.getElementById('nameGroup');
+        // Auth Elements removed as auth is moved to checkout
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -1330,27 +1202,6 @@
             return response;
         }
 
-        // 2. Place Order
-        async function placeOrderRequest(orderData) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/orders/place`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(orderData)
-                });
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Failed to place order: ${errorText || response.statusText}`);
-                }
-                
-                return await response.json();
-            } catch (error) {
-                console.error("Order Error:", error);
-                throw error;
-            }
-        }
-
         // --- ROUTING ---
         function route() {
             const hash = window.location.hash;
@@ -1390,18 +1241,6 @@
             });
 
             checkoutBtn.addEventListener('click', handleCheckout);
-            
-            loginBtn.addEventListener('click', () => openAuthModal('login'));
-            registerBtn.addEventListener('click', () => openAuthModal('register'));
-            closeAuthModal.addEventListener('click', closeAuthModalFunc);
-            authModal.addEventListener('click', (e) => {
-                if (e.target === authModal) closeAuthModalFunc();
-            });
-            authForm.addEventListener('submit', handleAuth);
-            authSwitchLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                switchAuthMode();
-            });
         }
 
         // --- HERO CAROUSEL ---
@@ -1634,44 +1473,11 @@
         }
 
         // Updated Checkout Logic connecting to Spring Boot
-        async function handleCheckout() {
+        function handleCheckout() {
             if (cart.length === 0) return showNotification('Your cart is empty!', 'error');
-            if (!isLoggedIn) {
-                toggleCart();
-                openAuthModal('login');
-                showNotification('Please login to checkout', 'warning');
-                return;
-            }
-
-            // Construct Order Object for Spring Boot
-            const orderRequest = {
-                customerName: currentUser.name || "Guest",
-                email: currentUser.email,
-                items: cart.map(item => ({
-                    productId: item.id,
-                    quantity: item.quantity
-                }))
-            };
-
-            // Send to Backend
-            checkoutBtn.textContent = 'Processing...';
-            checkoutBtn.disabled = true;
-
-            try {
-                const response = await placeOrderRequest(orderRequest);
-                console.log("Order Placed:", response);
-                
-                showNotification(`Order Placed Successfully! ID: ${response.orderId}`);
-                cart = [];
-                updateCart();
-                saveCartToStorage();
-                toggleCart();
-            } catch (error) {
-                showNotification('Failed to place order. Try again.', 'error');
-            } finally {
-                checkoutBtn.textContent = 'Checkout';
-                checkoutBtn.disabled = false;
-            }
+            
+            // Redirect to checkout page
+            window.location.href = 'checkout.html';
         }
         
         function handleBuyNow(productId) {
@@ -1682,72 +1488,13 @@
             }
         }
 
-        // --- AUTH ---
-        function openAuthModal(mode) {
-            authModal.classList.add('open');
-            if (mode === 'login') {
-                authTitle.textContent = 'Login';
-                authSubmitBtn.textContent = 'Login';
-                nameGroup.style.display = 'none';
-                authSwitchText.textContent = "Don't have an account?";
-                authSwitchLink.textContent = 'Register';
-            } else {
-                authTitle.textContent = 'Register';
-                authSubmitBtn.textContent = 'Register';
-                nameGroup.style.display = 'block';
-                authSwitchText.textContent = "Already have an account?";
-                authSwitchLink.textContent = 'Login';
-            }
-        }
-
-        function closeAuthModalFunc() {
-            authModal.classList.remove('open');
-            authForm.reset();
-        }
-
-        function switchAuthMode() {
-            const isLogin = authTitle.textContent === 'Login';
-            openAuthModal(isLogin ? 'register' : 'login');
-        }
-
-        function handleAuth(e) {
-            e.preventDefault();
-            const email = document.getElementById('authEmail').value;
-            const name = document.getElementById('authName').value;
-            if (authTitle.textContent === 'Register') {
-                if (!name) return showNotification('Please enter your name', 'warning');
-                currentUser = { email, name };
-                isLoggedIn = true;
-                saveUserToStorage();
-                showNotification(`Welcome, ${name}!`);
-            } else {
-                currentUser = { email, name: email.split('@')[0] };
-                isLoggedIn = true;
-                saveUserToStorage();
-                showNotification(`Welcome back, ${currentUser.name}!`);
-            }
-            updateAuthUI();
-            closeAuthModalFunc();
-        }
-
         function updateAuthUI() {
-            if (isLoggedIn) {
-                loginBtn.textContent = currentUser.name;
-                loginBtn.style.pointerEvents = 'none';
-                registerBtn.textContent = 'Logout';
-                registerBtn.onclick = handleLogout;
+            const welcomeMsg = document.getElementById('welcome-msg');
+            if (currentUser) {
+                welcomeMsg.textContent = `Hi, ${currentUser.name}`;
+            } else {
+                welcomeMsg.textContent = '';
             }
-        }
-
-        function handleLogout() {
-            isLoggedIn = false;
-            currentUser = null;
-            loginBtn.textContent = 'Login';
-            loginBtn.style.pointerEvents = 'auto';
-            registerBtn.textContent = 'Register';
-            registerBtn.onclick = null;
-            sessionStorage.removeItem('user');
-            showNotification('Logged out successfully');
         }
 
         // --- HELPERS ---
@@ -1756,13 +1503,11 @@
             const saved = sessionStorage.getItem('cart');
             if (saved) { cart = JSON.parse(saved); updateCart(); }
         }
-        function saveUserToStorage() { sessionStorage.setItem('user', JSON.stringify({ isLoggedIn, currentUser })); }
+        function saveUserToStorage() { sessionStorage.setItem('user_full', JSON.stringify(currentUser)); }
         function loadUserFromStorage() {
-            const saved = sessionStorage.getItem('user');
+            const saved = sessionStorage.getItem('user_full');
             if (saved) {
-                const data = JSON.parse(saved);
-                isLoggedIn = data.isLoggedIn;
-                currentUser = data.currentUser;
+                currentUser = JSON.parse(saved);
                 updateAuthUI();
             }
         }

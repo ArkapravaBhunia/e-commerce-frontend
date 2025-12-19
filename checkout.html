@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - ShopHub</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f8fafc; color: #0f172a; line-height: 1.6; }
+        
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+        .header { background: white; padding: 20px 0; border-bottom: 1px solid #e2e8f0; margin-bottom: 40px; }
+        .logo { font-size: 24px; font-weight: bold; color: #2563eb; text-decoration: none; }
+        
+        .checkout-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 40px; }
+        
+        .card { background: white; border-radius: 16px; padding: 30px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e2e8f0; }
+        .card-title { font-size: 18px; font-weight: 600; }
+        
+        .step { opacity: 0.5; pointer-events: none; transition: all 0.3s; }
+        .step.active { opacity: 1; pointer-events: auto; border: 2px solid #2563eb; }
+        .step.completed { opacity: 1; border: 2px solid #10b981; }
+        .step-number { background: #e2e8f0; color: #64748b; width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; font-weight: bold; }
+        .active .step-number { background: #2563eb; color: white; }
+        .completed .step-number { background: #10b981; color: white; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group.full { grid-column: 1 / -1; }
+        label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; }
+        input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; }
+        input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        
+        .btn { padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-size: 16px; width: 100%; transition: 0.2s; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-outline { background: white; border: 2px solid #e2e8f0; color: #0f172a; }
+        
+        .address-card { border: 2px solid #e2e8f0; border-radius: 8px; padding: 15px; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
+        .address-card:hover { border-color: #94a3b8; }
+        .address-card.selected { border-color: #2563eb; background: #eff6ff; }
+        
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 15px; }
+        .total-row { font-size: 20px; font-weight: 700; border-top: 2px solid #e2e8f0; padding-top: 15px; margin-top: 15px; }
+        
+        .coupon-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        
+        /* Modal for Add Address */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 100; }
+        .modal.open { display: flex; }
+        .modal-content { background: white; padding: 30px; border-radius: 16px; width: 90%; max-width: 500px; }
+
+        @media (max-width: 768px) { .checkout-grid { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="container">
+            <a href="modern_ecommerce_shop.html" class="logo">ShopHub Checkout</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="checkout-grid">
+            
+            <!-- LEFT COLUMN: Steps -->
+            <div class="steps-container">
+                
+                <!-- STEP 1: Login -->
+                <div id="step-login" class="card step active">
+                    <div class="card-header">
+                        <div class="card-title"><span class="step-number">1</span> Account</div>
+                    </div>
+                    <div id="login-content">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="login-email" placeholder="name@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="login-password" placeholder="••••••••">
+                        </div>
+                        <button class="btn btn-primary" onclick="handleLogin()">Login</button>
+                        <p style="margin-top: 15px; text-align: center; font-size: 14px;">
+                            New here? <a href="#" onclick="toggleRegister()">Create an account</a>
+                        </p>
+                    </div>
+                    <!-- Register Form (Hidden by default) -->
+                    <div id="register-content" style="display: none;">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Full Name</label>
+                                <input type="text" id="reg-name">
+                            </div>
+                            <div class="form-group">
+                                <label>Phone</label>
+                                <input type="tel" id="reg-phone">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="reg-email">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="reg-password">
+                        </div>
+                        <button class="btn btn-primary" onclick="handleRegister()">Register</button>
+                        <p style="margin-top: 15px; text-align: center; font-size: 14px;">
+                            Already have an account? <a href="#" onclick="toggleRegister()">Login</a>
+                        </p>
+                    </div>
+                    <!-- Logged In View -->
+                    <div id="logged-in-view" style="display: none;">
+                        <p>Logged in as <strong id="user-name-display">User</strong> (<span id="user-email-display">email</span>)</p>
+                        <button class="btn btn-outline" style="margin-top: 10px; width: auto;" onclick="logout()">Change Account</button>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Address -->
+                <div id="step-address" class="card step">
+                    <div class="card-header">
+                        <div class="card-title"><span class="step-number">2</span> Shipping Address</div>
+                        <button class="btn btn-outline" style="width: auto; padding: 8px 16px; font-size: 14px;" onclick="openAddressModal()">+ Add New</button>
+                    </div>
+                    <div id="address-list">
+                        <!-- Addresses will be injected here -->
+                        <p style="color: #64748b;">Please login to view addresses.</p>
+                    </div>
+                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="confirmAddress()">Continue to Payment</button>
+                </div>
+
+                <!-- STEP 3: Payment -->
+                <div id="step-payment" class="card step">
+                    <div class="card-header">
+                        <div class="card-title"><span class="step-number">3</span> Payment</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Card Number</label>
+                        <input type="text" placeholder="0000 0000 0000 0000">
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Expiry</label>
+                            <input type="text" placeholder="MM/YY">
+                        </div>
+                        <div class="form-group">
+                            <label>CVC</label>
+                            <input type="text" placeholder="123">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="pay-btn" onclick="placeFinalOrder()">Pay & Place Order</button>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Order Summary -->
+            <div class="summary-column">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Order Summary</div>
+                    </div>
+                    <div id="cart-items-summary" style="margin-bottom: 20px; max-height: 300px; overflow-y: auto;">
+                        <!-- Cart Items injected here -->
+                    </div>
+                    
+                    <div class="coupon-box">
+                        <input type="text" id="coupon-code" placeholder="Enter Coupon Code">
+                        <button class="btn btn-outline" style="width: auto;" onclick="applyCoupon()">Apply</button>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <span id="summary-subtotal">$0.00</span>
+                    </div>
+                    <div class="summary-row" style="color: #10b981;">
+                        <span>Discount</span>
+                        <span id="summary-discount">-$0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Shipping</span>
+                        <span>Free</span>
+                    </div>
+                    <div class="summary-row total-row">
+                        <span>Total</span>
+                        <span id="summary-total">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Address Modal -->
+    <div id="address-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 20px;">Add New Address</h3>
+            <div class="form-group">
+                <label>Street Address</label>
+                <input type="text" id="addr-street">
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" id="addr-city">
+                </div>
+                <div class="form-group">
+                    <label>State</label>
+                    <input type="text" id="addr-state">
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Zip Code</label>
+                    <input type="text" id="addr-zip">
+                </div>
+                <div class="form-group">
+                    <label>Country</label>
+                    <input type="text" id="addr-country">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-outline" onclick="closeAddressModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveAddress()">Save Address</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api';
+        let currentUser = JSON.parse(sessionStorage.getItem('user_full')) || null;
+        let cart = JSON.parse(sessionStorage.getItem('cart')) || [];
+        let selectedAddressId = null;
+        let appliedCoupon = null;
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            renderOrderSummary();
+            if (currentUser) {
+                showLoggedInState();
+                fetchAddresses();
+            }
+        });
+
+        // --- AUTH LOGIC ---
+        function toggleRegister() {
+            const loginDiv = document.getElementById('login-content');
+            const regDiv = document.getElementById('register-content');
+            if (loginDiv.style.display === 'none') {
+                loginDiv.style.display = 'block';
+                regDiv.style.display = 'none';
+            } else {
+                loginDiv.style.display = 'none';
+                regDiv.style.display = 'block';
+            }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                if (!response.ok) throw new Error("Invalid credentials");
+                
+                currentUser = await response.json();
+                sessionStorage.setItem('user_full', JSON.stringify(currentUser));
+                showLoggedInState();
+                fetchAddresses();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function handleRegister() {
+            const data = {
+                name: document.getElementById('reg-name').value,
+                phone: document.getElementById('reg-phone').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-password').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error("Registration failed");
+                
+                currentUser = await response.json();
+                sessionStorage.setItem('user_full', JSON.stringify(currentUser));
+                showLoggedInState();
+                fetchAddresses(); // will be empty initially
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        function showLoggedInState() {
+            document.getElementById('login-content').style.display = 'none';
+            document.getElementById('register-content').style.display = 'none';
+            document.getElementById('logged-in-view').style.display = 'block';
+            document.getElementById('user-name-display').textContent = currentUser.name;
+            document.getElementById('user-email-display').textContent = currentUser.email;
+            
+            // Mark step 1 done, activate step 2
+            document.getElementById('step-login').classList.add('completed');
+            document.getElementById('step-login').classList.remove('active');
+            document.getElementById('step-address').classList.add('active');
+        }
+
+        function logout() {
+            currentUser = null;
+            sessionStorage.removeItem('user_full');
+            location.reload();
+        }
+
+        // --- ADDRESS LOGIC ---
+        function openAddressModal() { document.getElementById('address-modal').classList.add('open'); }
+        function closeAddressModal() { document.getElementById('address-modal').classList.remove('open'); }
+
+        async function fetchAddresses() {
+            // Note: In a real app, User entity might not eagerly load addresses or we might need a separate endpoint.
+            // For now, assuming User object has addresses list or we refresh user.
+            // If the user object from login/register has addresses, use that.
+            // Otherwise, we might need a GET /users/{id} endpoint to refresh.
+            // For this demo, let's assume we re-fetch user details or use local state.
+            
+            // Since we added addresses locally in memory in `saveAddress`, let's check currentUser.addresses
+            renderAddresses(currentUser.addresses || []);
+        }
+
+        function renderAddresses(addresses) {
+            const container = document.getElementById('address-list');
+            container.innerHTML = '';
+            if (addresses.length === 0) {
+                container.innerHTML = '<p>No addresses found. Add one to continue.</p>';
+                return;
+            }
+            addresses.forEach(addr => {
+                const div = document.createElement('div');
+                div.className = `address-card ${selectedAddressId === addr.id ? 'selected' : ''}`;
+                div.innerHTML = `<strong>${addr.street}</strong><br>${addr.city}, ${addr.state} ${addr.zipCode}`;
+                div.onclick = () => {
+                    selectedAddressId = addr.id;
+                    renderAddresses(addresses); // Re-render to update class
+                };
+                container.appendChild(div);
+            });
+        }
+
+        async function saveAddress() {
+            const address = {
+                street: document.getElementById('addr-street').value,
+                city: document.getElementById('addr-city').value,
+                state: document.getElementById('addr-state').value,
+                zipCode: document.getElementById('addr-zip').value,
+                country: document.getElementById('addr-country').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/addresses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(address)
+                });
+                if (!response.ok) throw new Error("Failed to save address");
+                
+                const savedAddr = await response.json();
+                if (!currentUser.addresses) currentUser.addresses = [];
+                currentUser.addresses.push(savedAddr);
+                // Update session
+                sessionStorage.setItem('user_full', JSON.stringify(currentUser));
+                
+                closeAddressModal();
+                renderAddresses(currentUser.addresses);
+                // Auto select newly added
+                selectedAddressId = savedAddr.id;
+                renderAddresses(currentUser.addresses);
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        function confirmAddress() {
+            if (!selectedAddressId) return alert("Please select an address");
+            
+            document.getElementById('step-address').classList.add('completed');
+            document.getElementById('step-address').classList.remove('active');
+            document.getElementById('step-payment').classList.add('active');
+        }
+
+        // --- ORDER SUMMARY & COUPON ---
+        function renderOrderSummary() {
+            const container = document.getElementById('cart-items-summary');
+            let subtotal = 0;
+            
+            container.innerHTML = cart.map(item => {
+                const itemTotal = item.price * item.quantity;
+                subtotal += itemTotal;
+                return `
+                    <div style="display:flex; gap:10px; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
+                        <img src="${item.image}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">
+                        <div style="flex:1;">
+                            <div style="font-size:14px; font-weight:500;">${item.title}</div>
+                            <div style="font-size:12px; color:#64748b;">Qty: ${item.quantity} x $${item.price}</div>
+                        </div>
+                        <div style="font-weight:600;">$${itemTotal.toFixed(2)}</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('summary-subtotal').textContent = `$${subtotal.toFixed(2)}`;
+            updateTotal(subtotal);
+        }
+
+        function updateTotal(subtotal) {
+            let discount = 0;
+            if (appliedCoupon) {
+                discount = subtotal * 0.10; // Mock 10% logic if coupon is valid
+            }
+            document.getElementById('summary-discount').textContent = `-$${discount.toFixed(2)}`;
+            document.getElementById('summary-total').textContent = `$${(subtotal - discount).toFixed(2)}`;
+        }
+
+        async function applyCoupon() {
+            const code = document.getElementById('coupon-code').value;
+            if (!code) return;
+            // Mock validation
+            if (code === 'SAVE10') {
+                appliedCoupon = code;
+                alert("Coupon Applied: 10% Off!");
+                renderOrderSummary(); // Recalculate
+            } else {
+                alert("Invalid Coupon");
+            }
+        }
+
+        // --- FINAL CHECKOUT ---
+        async function placeFinalOrder() {
+            if (!currentUser || !selectedAddressId) return alert("Please complete previous steps");
+
+            const orderRequest = {
+                userId: currentUser.id,
+                addressId: selectedAddressId,
+                couponCode: appliedCoupon,
+                items: cart.map(i => ({ productId: i.id, quantity: i.quantity }))
+            };
+
+            const btn = document.getElementById('pay-btn');
+            btn.textContent = "Processing...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders/place`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderRequest)
+                });
+
+                if (!response.ok) {
+                    const txt = await response.text();
+                    throw new Error(txt || "Order failed");
+                }
+
+                const orderData = await response.json();
+                alert(`Order Placed Successfully! ID: ${orderData.orderId}`);
+                sessionStorage.removeItem('cart');
+                window.location.href = 'modern_ecommerce_shop.html'; // Redirect home
+            } catch (e) {
+                alert("Error placing order: " + e.message);
+                btn.textContent = "Pay & Place Order";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
